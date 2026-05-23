@@ -62,7 +62,7 @@ export default function Home() {
       <footer className="text-center p-6 bg-gray-900 text-white">
   <div className="flex flex-col md:flex-row justify-center items-center gap-4">
     <a
-      href="https://feedback.doptonin.in/u/Prince"
+      href="https://feedback.doptonin.online/u/Prince"
       target="_blank"
       rel="noopener noreferrer"
       className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg shadow transition-transform transform hover:scale-105"
