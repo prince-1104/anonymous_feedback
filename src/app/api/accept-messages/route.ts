@@ -1,12 +1,9 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]/options';
-import { dbConnect } from '@/lib/dbConnect';
-import UserModel from '@/lib/models/User';
+import { prisma } from '@/lib/prisma';
 import { User } from 'next-auth';
 
 export async function POST(request: Request) {
-  await dbConnect();
-
   const session = await getServerSession(authOptions);
   const user = session?.user as User & { id?: string };
 
@@ -17,13 +14,12 @@ export async function POST(request: Request) {
   const { acceptMessages } = await request.json();
 
   try {
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      user.id,
-      { isAcceptingMessages: acceptMessages },
-      { new: true }
-    );
+    const updateResult = await prisma.user.updateMany({
+      where: { id: user.id },
+      data: { isAcceptingMessages: acceptMessages },
+    });
 
-    if (!updatedUser) {
+    if (updateResult.count === 0) {
       return Response.json(
         { success: false, message: 'User not found to update' },
         { status: 404 }
@@ -34,7 +30,7 @@ export async function POST(request: Request) {
       {
         success: true,
         message: 'Message acceptance status updated successfully',
-        isAcceptingMessages: updatedUser.isAcceptingMessages,
+        isAcceptingMessages: acceptMessages,
       },
       { status: 200 }
     );
@@ -48,8 +44,6 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  await dbConnect();
-
   const session = await getServerSession(authOptions);
   const user = session?.user as User & { id?: string };
 
@@ -58,7 +52,10 @@ export async function GET() {
   }
 
   try {
-    const foundUser = await UserModel.findById(user.id);
+    const foundUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isAcceptingMessages: true },
+    });
 
     if (!foundUser) {
       return Response.json(
@@ -81,4 +78,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}

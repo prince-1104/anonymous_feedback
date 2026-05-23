@@ -1,5 +1,4 @@
-import UserModel from '@/lib/models/User';
-import { dbConnect } from '@/lib/dbConnect';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 const messageSchema = z.object({
@@ -8,11 +7,8 @@ const messageSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  await dbConnect();
-
   try {
     const body = await request.json();
-
     const result = messageSchema.safeParse(body);
 
     if (!result.success) {
@@ -27,7 +23,7 @@ export async function POST(request: Request) {
 
     const { username, content } = result.data;
 
-    const user = await UserModel.findOne({ username }).exec();
+    const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user) {
       return Response.json(
@@ -43,13 +39,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const newMessage= {
-      content,
-      createdAt: new Date(),
-    };
-
-    user.messages.push(newMessage);
-    await user.save();
+    await prisma.message.create({
+      data: {
+        content,
+        userId: user.id,
+      },
+    });
 
     return Response.json(
       { success: true, message: 'Message sent successfully' },
