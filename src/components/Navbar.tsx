@@ -1,47 +1,60 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { Button } from './ui/button';
 import { User } from 'next-auth';
+import { LayoutDashboard, LogOut, MessageSquareQuote } from 'lucide-react';
+import { Button } from './ui/button';
 
 function Navbar() {
   const { data: session } = useSession();
   const user = session?.user as User | undefined;
 
   return (
-    <nav className="p-4 md:p-6 shadow-md bg-gray-900 text-white">
-      <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
-        <Link href="/" className="text-xl font-bold mb-4 md:mb-0">
-          True Feedback
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-background/70 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary transition-colors group-hover:bg-primary/25">
+            <MessageSquareQuote className="size-4" />
+          </div>
+          <span className="font-semibold tracking-tight">True Feedback</span>
         </Link>
 
-        {session ? (
-          <div className="flex items-center space-x-4">
-            <span>
-              Welcome, {user?.username || user?.email}
-            </span>
-            <Button
-              onClick={() => signOut()}
-              className="bg-slate-100 text-black"
-              variant="outline"
-            >
-              Logout
-            </Button>
-          </div>
-        ) : (
-          <Link href="/sign-in">
-            <Button
-              className="bg-slate-100 text-black"
-              variant="outline"
-            >
-              Login
-            </Button>
-          </Link>
-        )}
+        <nav className="flex items-center gap-2 sm:gap-3">
+          {session ? (
+            <>
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                @{user?.username}
+              </span>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard" className="gap-1.5">
+                  <LayoutDashboard className="size-4" />
+                  Dashboard
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => signOut()}
+                className="gap-1.5 border-white/10"
+              >
+                <LogOut className="size-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button size="sm" asChild className="shadow-lg shadow-primary/25">
+                <Link href="/sign-up">Get started</Link>
+              </Button>
+            </>
+          )}
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 }
 

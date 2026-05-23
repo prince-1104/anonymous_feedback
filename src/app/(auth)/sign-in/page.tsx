@@ -15,11 +15,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast, Toaster } from 'sonner'; 
+import { toast } from 'sonner';
 import { signInSchema } from '@/schemas/signInSchemas';
+import { AuthShell } from '@/components/layout/AuthShell';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 export default function SignInForm() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
@@ -30,11 +34,13 @@ export default function SignInForm() {
   });
 
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
+    setIsLoading(true);
     const result = await signIn('credentials', {
       redirect: false,
       identifier: data.identifier,
       password: data.password,
     });
+    setIsLoading(false);
 
     if (result?.error) {
       toast.error(
@@ -46,61 +52,71 @@ export default function SignInForm() {
     }
 
     if (result?.url) {
-      toast.success('Login successful!');
+      toast.success('Welcome back!');
       router.replace('/dashboard');
     }
   };
 
   return (
-    <>
-      <Toaster richColors />  
-      <div className="flex justify-center items-center min-h-screen bg-gray-800">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-          <div className="text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-6">
-              Welcome Back to True Feedback
-            </h1>
-            <p className="mb-4">Sign in to continue your secret conversations</p>
-          </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                name="identifier"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email / Username</FormLabel>
-                    <Input {...field} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                name="password"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <Input type="password" {...field} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button className="w-full" type="submit">
-                Sign In
-              </Button>
-            </form>
-          </Form>
-          <div className="text-center mt-4">
-            <p>
-              Not a member yet?{' '}
-              <Link href="/sign-up" className="text-blue-600 hover:text-blue-800">
-                Sign up
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to manage your anonymous inbox"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <FormField
+            name="identifier"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email or username</FormLabel>
+                <Input
+                  {...field}
+                  className="h-11 border-white/10 bg-black/20"
+                  placeholder="you@example.com"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="password"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <Input
+                  type="password"
+                  {...field}
+                  className="h-11 border-white/10 bg-black/20"
+                  placeholder="••••••••"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button
+            className="h-11 w-full shadow-lg shadow-primary/25"
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign in'
+            )}
+          </Button>
+        </form>
+      </Form>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{' '}
+        <Link href="/sign-up" className="font-medium text-primary hover:underline">
+          Create one
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

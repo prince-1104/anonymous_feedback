@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDebounceValue } from 'usehooks-ts';
 import * as z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -18,11 +17,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import axios, { AxiosError } from 'axios';
-import { Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { signUpSchema } from '@/schemas/signUpSchema';
-
-import { toast, Toaster } from 'sonner';
+import { toast } from 'sonner';
+import { AuthShell } from '@/components/layout/AuthShell';
+import { cn } from '@/lib/utils';
 
 export default function SignUpForm() {
   const [username, setUsername] = useState('');
@@ -44,22 +44,21 @@ export default function SignUpForm() {
 
   useEffect(() => {
     const checkUsernameUnique = async () => {
-      if (debouncedUsername) {
-        setIsCheckingUsername(true);
-        setUsernameMessage('');
-        try {
-          const response = await axios.get<ApiResponse>(
-            `/api/check-username-unique?username=${debouncedUsername}`
-          );
-          setUsernameMessage(response.data.message);
-        } catch (error) {
-          const axiosError = error as AxiosError<ApiResponse>;
-          setUsernameMessage(
-            axiosError.response?.data.message ?? 'Error checking username'
-          );
-        } finally {
-          setIsCheckingUsername(false);
-        }
+      if (!debouncedUsername) return;
+      setIsCheckingUsername(true);
+      setUsernameMessage('');
+      try {
+        const response = await axios.get<ApiResponse>(
+          `/api/check-username-unique?username=${debouncedUsername}`
+        );
+        setUsernameMessage(response.data.message);
+      } catch (error) {
+        const axiosError = error as AxiosError<ApiResponse>;
+        setUsernameMessage(
+          axiosError.response?.data.message ?? 'Error checking username'
+        );
+      } finally {
+        setIsCheckingUsername(false);
       }
     };
     checkUsernameUnique();
@@ -69,114 +68,125 @@ export default function SignUpForm() {
     setIsSubmitting(true);
     try {
       const response = await axios.post<ApiResponse>('/api/sign-up', data);
-
-      toast.success(response.data.message); 
-
+      toast.success(response.data.message);
       router.replace(`/verify/${username}`);
     } catch (error) {
-      console.error('Error during sign-up:', error);
-
       const axiosError = error as AxiosError<ApiResponse>;
-
-      const errorMessage =
-        axiosError.response?.data.message ||
-        'There was a problem with your sign-up. Please try again.';
-
-      toast.error(errorMessage); // ✅ Error toast
+      toast.error(
+        axiosError.response?.data.message ??
+          'There was a problem with your sign-up. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isUsernameAvailable = usernameMessage === 'Username is unique';
+
   return (
-    <>
-      <Toaster richColors /> {/* ✅ Mount toasts */}
-      <div className="flex justify-center items-center min-h-screen bg-gray-800">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-          <div className="text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-6">
-              Join True Feedback
-            </h1>
-            <p className="mb-4">Sign up to start your anonymous adventure</p>
-          </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                name="username"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <Input
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        setUsername(e.target.value);
-                      }}
-                    />
-                    {isCheckingUsername && <Loader2 className="animate-spin" />}
-                    {!isCheckingUsername && usernameMessage && (
-                      <p
-                        className={`text-sm ${
-                          usernameMessage === 'Username is unique'
-                            ? 'text-green-500'
-                            : 'text-red-500'
-                        }`}
-                      >
-                        {usernameMessage}
-                      </p>
+    <AuthShell
+      title="Create your account"
+      subtitle="Get your unique link and start collecting feedback"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <FormField
+            name="username"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <Input
+                  {...field}
+                  className="h-11 border-white/10 bg-black/20"
+                  placeholder="cedok"
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setUsername(e.target.value);
+                  }}
+                />
+                {isCheckingUsername && (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="size-3 animate-spin" />
+                    Checking availability...
+                  </p>
+                )}
+                {!isCheckingUsername && usernameMessage && (
+                  <p
+                    className={cn(
+                      'flex items-center gap-1.5 text-xs',
+                      isUsernameAvailable ? 'text-emerald-400' : 'text-destructive'
                     )}
-                    <FormMessage />
-                  </FormItem>
+                  >
+                    {isUsernameAvailable ? (
+                      <CheckCircle2 className="size-3.5" />
+                    ) : (
+                      <XCircle className="size-3.5" />
+                    )}
+                    {usernameMessage}
+                  </p>
                 )}
-              />
-              <FormField
-                name="email"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <Input {...field} />
-                    <p className="text-muted, text-gray-400 text-sm">
-                      We will send you a verification code
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                name="password"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <Input type="password" {...field} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Please wait
-                  </>
-                ) : (
-                  'Sign Up'
-                )}
-              </Button>
-            </form>
-          </Form>
-          <div className="text-center mt-4">
-            <p>
-              Already a member?{' '}
-              <Link href="/sign-in" className="text-blue-600 hover:text-blue-800">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="email"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  {...field}
+                  type="email"
+                  className="h-11 border-white/10 bg-black/20"
+                  placeholder="you@example.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  We&apos;ll send a verification code
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="password"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <Input
+                  type="password"
+                  {...field}
+                  className="h-11 border-white/10 bg-black/20"
+                  placeholder="••••••••"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button
+            type="submit"
+            className="h-11 w-full shadow-lg shadow-primary/25"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Creating account...
+              </>
+            ) : (
+              'Create account'
+            )}
+          </Button>
+        </form>
+      </Form>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link href="/sign-in" className="font-medium text-primary hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

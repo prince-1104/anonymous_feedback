@@ -2,25 +2,28 @@
 
 import { MessageCard } from '@/components/MessageCard';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Message } from '@/lib/models/User';
 import { ApiResponse } from '../../../../types/ApiResponse';
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios, { AxiosError } from 'axios';
-import { Loader2, RefreshCcw } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  Inbox,
+  Link2,
+  Loader2,
+  MessageSquare,
+  RefreshCcw,
+  Sparkles,
+} from 'lucide-react';
 import { User } from 'next-auth';
 import { useSession } from 'next-auth/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AcceptMessageSchema } from '@/schemas/acceptMessageSchema';
-import { useRouter } from 'next/navigation';
-
-// interface MessageResponse {
-//   _id: string;
-//   content: string;
-//   createdAt: Date;
-// }
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 function UserDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,9 +31,9 @@ function UserDashboard() {
   const [isSwitchLoading, setIsSwitchLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data: session } = useSession();
-  const router = useRouter();
 
   const form = useForm({
     resolver: zodResolver(AcceptMessageSchema),
@@ -59,34 +62,28 @@ function UserDashboard() {
     }
   }, [setValue]);
 
-  const fetchMessages = useCallback(
-    async (refresh: boolean = false) => {
-      setIsLoading(true);
-      setIsSwitchLoading(false);
-      try {
-        const response = await axios.get<ApiResponse>('/api/get-messages');
-        setMessages((response.data.messages || []) as Message[]);
-        if (refresh) {
-          setIsError(false);
-          setFeedbackMessage('Showing latest messages');
-        }
-      } catch (error) {
-        const axiosError = error as AxiosError<ApiResponse>;
-        setIsError(true);
-        setFeedbackMessage(
-          axiosError.response?.data.message ?? 'Failed to fetch messages'
-        );
-      } finally {
-        setIsLoading(false);
-        setIsSwitchLoading(false);
+  const fetchMessages = useCallback(async (refresh: boolean = false) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get<ApiResponse>('/api/get-messages');
+      setMessages((response.data.messages || []) as Message[]);
+      if (refresh) {
+        setIsError(false);
+        setFeedbackMessage('Inbox refreshed');
       }
-    },
-    [setMessages]
-  );
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiResponse>;
+      setIsError(true);
+      setFeedbackMessage(
+        axiosError.response?.data.message ?? 'Failed to fetch messages'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!session || !session.user) return;
-
+    if (!session?.user) return;
     fetchMessages();
     fetchAcceptMessages();
   }, [session, fetchAcceptMessages, fetchMessages]);
@@ -103,109 +100,187 @@ function UserDashboard() {
       const axiosError = error as AxiosError<ApiResponse>;
       setIsError(true);
       setFeedbackMessage(
-        axiosError.response?.data.message ??
-          'Failed to update message settings'
+        axiosError.response?.data.message ?? 'Failed to update message settings'
       );
     }
   };
 
   useEffect(() => {
-    if (feedbackMessage) {
-      const timer = setTimeout(() => setFeedbackMessage(''), 4000);
-      return () => clearTimeout(timer);
-    }
+    if (!feedbackMessage) return;
+    const timer = setTimeout(() => setFeedbackMessage(''), 4000);
+    return () => clearTimeout(timer);
   }, [feedbackMessage]);
 
-  if (!session || !session.user) {
-    return <div></div>;
+  if (!session?.user) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const { username } = session.user as User;
-
-  const baseUrl = `${window.location.protocol}//${window.location.host}`;
+  const baseUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.host}`
+      : '';
   const profileUrl = `${baseUrl}/u/${username}`;
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(profileUrl);
+  const copyToClipboard = async () => {
+    await navigator.clipboard.writeText(profileUrl);
+    setCopied(true);
     setIsError(false);
-    setFeedbackMessage('Profile URL has been copied to clipboard.');
+    setFeedbackMessage('Link copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="my-8 mx-4 md:mx-8 lg:mx-auto p-6 bg-white rounded w-full max-w-6xl">
-      <div className="flex items-center justify-between mb-4"></div>
-      <h1 className="text-4xl font-bold mb-4">User Dashboard</h1>
-      <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          onClick={() => router.push('/')}
-        >
-          Go to Home
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">Dashboard</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+            Welcome back, <span className="gradient-text">@{username}</span>
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Manage your inbox and share your anonymous feedback link.
+          </p>
+        </div>
+        <Button variant="outline" asChild className="border-white/10 w-fit">
+          <Link href="/">Back to home</Link>
         </Button>
+      </div>
 
       {feedbackMessage && (
         <div
-          className={`p-4 mb-4 text-sm rounded-md ${
-            isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-          }`}
+          className={cn(
+            'mb-6 rounded-xl border px-4 py-3 text-sm',
+            isError
+              ? 'border-destructive/30 bg-destructive/10 text-destructive'
+              : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+          )}
         >
           {feedbackMessage}
         </div>
       )}
 
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold mb-2">Copy Your Unique Link</h2>
-        <div className="flex items-center">
-          <input
-            type="text"
-            value={profileUrl}
-            disabled
-            className="input input-bordered w-full p-2 mr-2"
-          />
-          <Button onClick={copyToClipboard}>Copy</Button>
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="glass-panel p-5 sm:col-span-2 lg:col-span-2">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Link2 className="size-4 text-primary" />
+            Your public link
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <code className="flex-1 truncate rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground/90">
+              {profileUrl}
+            </code>
+            <Button onClick={copyToClipboard} className="shrink-0 gap-2 shadow-lg shadow-primary/20">
+              {copied ? (
+                <>
+                  <Check className="size-4" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="size-4" />
+                  Copy link
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Share this link anywhere — messages arrive anonymously in your inbox.
+          </p>
+        </div>
+
+        <div className="glass-panel flex flex-col justify-between p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Inbox status</p>
+              <p className="mt-1 font-semibold">
+                {acceptMessages ? 'Accepting messages' : 'Paused'}
+              </p>
+            </div>
+            <Switch
+              {...register('acceptMessages')}
+              checked={acceptMessages}
+              onCheckedChange={handleSwitchChange}
+              disabled={isSwitchLoading}
+            />
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Turn off when you want to pause new anonymous messages.
+          </p>
+        </div>
+
+        <div className="glass-panel p-5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <MessageSquare className="size-4 text-primary" />
+            <span className="text-sm">Total messages</span>
+          </div>
+          <p className="mt-2 text-3xl font-bold">{messages.length}</p>
+        </div>
+
+        <div className="glass-panel p-5 sm:col-span-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Sparkles className="size-4 text-primary" />
+            <span className="text-sm">Tip</span>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-foreground/80">
+            Add your link to your bio, stories, or team channel. The more you share it,
+            the more honest feedback you collect.
+          </p>
         </div>
       </div>
 
-      <div className="mb-4">
-        <Switch
-          {...register('acceptMessages')}
-          checked={acceptMessages}
-          onCheckedChange={handleSwitchChange}
-          disabled={isSwitchLoading}
-        />
-        <span className="ml-2">
-          Accept Messages: {acceptMessages ? 'On' : 'Off'}
-        </span>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Your messages</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 border-white/10"
+          onClick={() => fetchMessages(true)}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCcw className="size-4" />
+          )}
+          Refresh
+        </Button>
       </div>
-      <Separator />
 
-      <Button
-        className="mt-4"
-        variant="outline"
-        onClick={(e) => {
-          e.preventDefault();
-          fetchMessages(true);
-        }}
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <RefreshCcw className="h-4 w-4" />
-        )}
-      </Button>
-
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-        {messages.length > 0 ? (
-          messages.map((message, index) => (
+      {isLoading && messages.length === 0 ? (
+        <div className="flex min-h-[200px] items-center justify-center glass-panel">
+          <Loader2 className="size-8 animate-spin text-primary" />
+        </div>
+      ) : messages.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {messages.map((message, index) => (
             <MessageCard
               key={message._id || `message-${index}`}
               message={message}
               onMessageDeleteAction={handleDeleteMessage}
             />
-          ))
-        ) : (
-          <p>No messages to display.</p>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="glass-panel flex flex-col items-center justify-center px-6 py-16 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+            <Inbox className="size-7" />
+          </div>
+          <h3 className="text-lg font-semibold">No messages yet</h3>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            Share your link to start receiving anonymous feedback. Your inbox will
+            show up here instantly.
+          </p>
+          <Button onClick={copyToClipboard} className="mt-6 gap-2">
+            <Copy className="size-4" />
+            Copy your link
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
